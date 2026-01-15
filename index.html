@@ -11,6 +11,7 @@
             --primary: #38bdf8;
             --accent: #fb7185;
             --called: #10b981;
+            --latest-call: #0ea5e9; /* Distinct Sky Blue for the latest number */
             --manual-highlight: #f59e0b; 
             --text-main: #f8fafc;
             --text-dim: #475569;
@@ -108,9 +109,16 @@
             aspect-ratio: 1 / 1; background: var(--card-bg); display: flex;
             align-items: center; justify-content: center; font-size: clamp(14px, 4vw, 20px); 
             font-weight: 600; color: var(--text-dim); border-radius: 2px;
+            transition: all 0.2s ease;
         }
 
+        /* Generic called state */
         .cell.called { background-color: var(--called); color: white; cursor: pointer; }
+
+        /* Specific latest state (takes priority) */
+        .cell.latest { background-color: var(--latest-call) !important; color: white; transform: scale(1.05); z-index: 1; box-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+
+        /* Manual amber highlight */
         .cell.called.manual { background-color: var(--manual-highlight); }
 
         .footer-controls { 
@@ -185,6 +193,13 @@
             document.getElementById('nl-word').innerText = num ? getWord(num, 'nl') : "";
             document.getElementById('en-word').innerText = num ? getWord(num, 'en') : "";
             document.getElementById('da-word').innerText = num ? getWord(num, 'da') : "";
+            
+            // Handle grid highlighting
+            document.querySelectorAll('.cell').forEach(c => c.classList.remove('latest'));
+            if (num) {
+                const latestCell = document.getElementById(`cell-${num}`);
+                if (latestCell) latestCell.classList.add('latest');
+            }
         }
 
         function loadState() {
@@ -205,6 +220,8 @@
             for (let i = 1; i <= 90; i++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell' + (called.includes(i) ? ' called' : '');
+                // Maintain latest highlight on load
+                if (history.length > 0 && i === history[history.length - 1]) cell.classList.add('latest');
                 cell.innerText = i; cell.id = `cell-${i}`;
                 cell.onclick = () => { if (called.includes(i)) cell.classList.toggle('manual'); };
                 grid.appendChild(cell);
@@ -235,22 +252,13 @@
 
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    alert(`Error attempting to enable full-screen mode: ${err.message}`);
-                });
+                document.documentElement.requestFullscreen().catch(err => alert(err.message));
                 document.getElementById('fullscreen-btn').innerText = "Exit Fullscreen";
             } else {
                 document.exitFullscreen();
                 document.getElementById('fullscreen-btn').innerText = "Fullscreen";
             }
         }
-
-        // Listen for escape key or other exit methods
-        document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) {
-                document.getElementById('fullscreen-btn').innerText = "Fullscreen";
-            }
-        });
 
         function resetGame() {
             if (confirm("Reset Board?")) {
