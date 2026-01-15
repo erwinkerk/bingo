@@ -31,7 +31,6 @@
             min-height: 100vh;
         }
 
-        /* Ball Counter Styling */
         .ball-counter {
             font-size: 0.8rem;
             font-weight: 700;
@@ -68,7 +67,7 @@
         }
 
         .translation-table td {
-            padding: 6px 8px;
+            padding: 8px 8px;
             vertical-align: middle;
             border-bottom: 1px solid #1e293b;
         }
@@ -95,7 +94,11 @@
             color: var(--text-main);
             text-transform: lowercase;
             word-break: break-word;
+            cursor: pointer;
         }
+        
+        /* Visual cue that words are clickable */
+        .word-col:active { color: var(--primary); }
 
         .history-list {
             display: flex; gap: 5px; justify-content: center; height: 40px; margin-bottom: 15px; width: 100%;
@@ -148,19 +151,19 @@
     <button id="main-button" onclick="drawNumber()">GO</button>
 
     <table class="translation-table">
-        <tr>
+        <tr onclick="speakWord('nl')">
             <td class="lang-col">
                 <svg class="flag-icon" viewBox="0 0 9 6"><rect fill="#21468B" width="9" height="6"/><rect fill="#FFF" width="9" height="4"/><rect fill="#AE1C28" width="9" height="2"/></svg> NL
             </td>
             <td class="word-col" id="nl-word"></td>
         </tr>
-        <tr>
+        <tr onclick="speakWord('en')">
             <td class="lang-col">
                 <svg class="flag-icon" viewBox="0 0 60 30"><rect width="60" height="30" fill="#00247d"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#cf142b" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#cf142b" stroke-width="6"/></svg> EN
             </td>
             <td class="word-col" id="en-word"></td>
         </tr>
-        <tr>
+        <tr onclick="speakWord('da')">
             <td class="lang-col">
                 <svg class="flag-icon" viewBox="0 0 37 28"><rect fill="#C8102E" width="37" height="28"/><path stroke="#FFF" stroke-width="4" d="M0,14 h37 M12,0 v28"/></svg> DA
             </td>
@@ -178,9 +181,9 @@
 
     <script>
         const words = {
-            nl: { u: ['', 'één', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven', 'acht', 'negen'], t: ['tien', 'elf', 'twaalf', 'dertien', 'veertien', 'vijftien', 'zestien', 'zeventien', 'achttien', 'negentien'], d: ['', '', 'twintig', 'dertig', 'veertig', 'vijftig', 'zestig', 'zeventig', 'tachtig', 'negentig'] },
-            en: { u: ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'], t: ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'], d: ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'] },
-            da: { u: ['', 'en', 'to', 'tre', 'fire', 'fem', 'seks', 'syv', 'otte', 'ni'], t: ['ti', 'elleve', 'tolv', 'tretten', 'fjorten', 'femten', 'seksten', 'sytten', 'atten', 'nitten'], d: ['', '', 'tyve', 'tredive', 'fyrre', 'halvtreds', 'tres', 'halvfjerds', 'firs', 'halvfems'] }
+            nl: { lang: 'nl-NL', u: ['', 'één', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven', 'acht', 'negen'], t: ['tien', 'elf', 'twaalf', 'dertien', 'veertien', 'vijftien', 'zestien', 'zeventien', 'achttien', 'negentien'], d: ['', '', 'twintig', 'dertig', 'veertig', 'vijftig', 'zestig', 'zeventig', 'tachtig', 'negentig'] },
+            en: { lang: 'en-GB', u: ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'], t: ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'], d: ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'] },
+            da: { lang: 'da-DK', u: ['', 'en', 'to', 'tre', 'fire', 'fem', 'seks', 'syv', 'otte', 'ni'], t: ['ti', 'elleve', 'tolv', 'tretten', 'fjorten', 'femten', 'seksten', 'sytten', 'atten', 'nitten'], d: ['', '', 'tyve', 'tredive', 'fyrre', 'halvtreds', 'tres', 'halvfjerds', 'firs', 'halvfems'] }
         };
 
         function getWord(n, l) {
@@ -191,6 +194,20 @@
             if (l === 'nl') return u === 0 ? d.d[t] : d.u[u] + '-en-' + d.d[t];
             if (l === 'da') return u === 0 ? d.d[t] : d.u[u] + '-og-' + d.d[t];
             return u === 0 ? d.d[t] : d.d[t] + '-' + d.u[u];
+        }
+
+        // --- NEW: Speech Function ---
+        function speakWord(langKey) {
+            const text = document.getElementById(`${langKey}-word`).innerText;
+            if (!text || !window.speechSynthesis) return;
+
+            // Stop any current speech
+            window.speechSynthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = words[langKey].lang;
+            utterance.rate = 0.9; // Slightly slower for clarity
+            window.speechSynthesis.speak(utterance);
         }
 
         let available = [], history = [], called = [];
