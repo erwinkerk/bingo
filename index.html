@@ -31,6 +31,17 @@
             min-height: 100vh;
         }
 
+        /* Ball Counter Styling */
+        .ball-counter {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .ball-counter span { color: var(--primary); }
+
         #main-button {
             width: clamp(120px, 30vw, 150px);
             height: clamp(120px, 30vw, 150px);
@@ -44,7 +55,7 @@
             display: flex;
             align-items: center; justify-content: center;
             box-shadow: 0 0 25px rgba(56, 189, 248, 0.2);
-            margin: 10px 0;
+            margin: 0 0 10px 0;
             touch-action: manipulation;
         }
 
@@ -110,16 +121,10 @@
             align-items: center; justify-content: center; font-size: clamp(14px, 4vw, 20px); 
             font-weight: 600; color: var(--text-dim); border-radius: 2px;
             transition: all 0.2s ease;
-            cursor: default;
         }
 
-        /* 1. Base called state (Green) */
         .cell.called { background-color: var(--called); color: white; cursor: pointer; }
-
-        /* 2. Newest call state (Blue) - overrides Green */
         .cell.latest { background-color: var(--latest-call); color: white; transform: scale(1.05); z-index: 1; box-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
-
-        /* 3. Manual override state (Amber) - overrides Blue AND Green */
         .cell.manual { background-color: var(--manual-highlight) !important; color: white; box-shadow: 0 0 10px var(--manual-highlight); }
 
         .footer-controls { 
@@ -137,6 +142,8 @@
     </style>
 </head>
 <body>
+
+    <div class="ball-counter" id="counter-display">DRAWN: <span>0</span> / REMAINING: <span>90</span></div>
 
     <button id="main-button" onclick="drawNumber()">GO</button>
 
@@ -195,6 +202,8 @@
             document.getElementById('en-word').innerText = num ? getWord(num, 'en') : "";
             document.getElementById('da-word').innerText = num ? getWord(num, 'da') : "";
             
+            document.getElementById('counter-display').innerHTML = `DRAWN: <span>${called.length}</span> / REMAINING: <span>${available.length}</span>`;
+
             document.querySelectorAll('.cell').forEach(c => c.classList.remove('latest'));
             if (num) {
                 const latestCell = document.getElementById(`cell-${num}`);
@@ -213,7 +222,7 @@
             return false;
         }
 
-        function initGame() { if (!loadState()) { available = Array.from({length: 90}, (_, i) => i + 1); renderGrid(); } }
+        function initGame() { if (!loadState()) { available = Array.from({length: 90}, (_, i) => i + 1); updateUI(null); renderGrid(); } }
 
         function renderGrid() {
             const grid = document.getElementById('bingo-grid'); grid.innerHTML = '';
