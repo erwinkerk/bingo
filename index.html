@@ -1,50 +1,308 @@
-<script>
-    // Configuration for languages and their preferred voice patterns
-    const words = {
-        nl: { lang: 'nl-NL', u: ['', 'één', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven', 'acht', 'negen'], t: ['tien', 'elf', 'twaalf', 'dertien', 'veertien', 'vijftien', 'zestien', 'zeventien', 'achttien', 'negentien'], d: ['', '', 'twintig', 'dertig', 'veertig', 'vijftig', 'zestig', 'zeventig', 'tachtig', 'negentig'] },
-        en: { lang: 'en-GB', u: ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'], t: ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'], d: ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'] },
-        da: { lang: 'da-DK', u: ['', 'en', 'to', 'tre', 'fire', 'fem', 'seks', 'syv', 'otte', 'ni'], t: ['ti', 'elleve', 'tolv', 'tretten', 'fjorten', 'femten', 'seksten', 'sytten', 'atten', 'nitten'], d: ['', '', 'tyve', 'tredive', 'fyrre', 'halvtreds', 'tres', 'halvfjerds', 'firs', 'halvfems'] }
-    };
-
-    let voices = [];
-
-    // --- NEW: Voice Selection Logic ---
-    function loadVoices() {
-        voices = window.speechSynthesis.getVoices();
-    }
-
-    // Chrome on Android loads voices asynchronously
-    if (speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = loadVoices;
-    }
-
-    function getBestVoice(langCode) {
-        // Look for exact locale match, prefer 'Google' or 'Premium' voices on Android
-        return voices.find(v => v.lang === langCode && v.name.includes('Google')) || 
-               voices.find(v => v.lang.startsWith(langCode.split('-')[0])) || 
-               null;
-    }
-
-    function speakWord(langKey) {
-        const text = document.getElementById(`${langKey}-word`).innerText;
-        if (!text || !window.speechSynthesis) return;
-
-        window.speechSynthesis.cancel(); // Stop current
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        const targetLang = words[langKey].lang;
-        
-        const selectedVoice = getBestVoice(targetLang);
-        if (selectedVoice) {
-            utterance.voice = selectedVoice;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bingo 90</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #38bdf8;
+            --accent: #fb7185;
+            --called: #10b981;
+            --latest-call: #0ea5e9; 
+            --manual-highlight: #f59e0b; 
+            --text-main: #f8fafc;
+            --text-dim: #475569;
+            --empty-slot: #334155;
         }
 
-        utterance.lang = targetLang;
-        utterance.pitch = 1.0; // Influence pitch (0.1 to 2)
-        utterance.rate = 0.85;  // Influence speed (0.1 to 10)
-        
-        window.speechSynthesis.speak(utterance);
-    }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
 
-    // ... (Keep the rest of the existing Bingo logic: drawNumber, renderGrid, etc.) ...
-</script>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            min-height: 100vh;
+        }
+
+        .ball-counter {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .ball-counter span { color: var(--primary); }
+
+        #main-button {
+            width: clamp(120px, 30vw, 150px);
+            height: clamp(120px, 30vw, 150px);
+            border-radius: 50%;
+            border: 6px solid var(--primary);
+            background-color: var(--card-bg);
+            font-size: clamp(50px, 10vw, 70px);
+            font-weight: 800;
+            color: var(--accent);
+            cursor: pointer;
+            display: flex;
+            align-items: center; justify-content: center;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.2);
+            margin: 0 0 10px 0;
+            touch-action: manipulation;
+            user-select: none;
+        }
+
+        #main-button:active { transform: scale(0.95); }
+
+        .translation-table {
+            width: 100%;
+            max-width: 500px;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            table-layout: fixed;
+        }
+
+        .translation-table td {
+            padding: 8px 8px;
+            vertical-align: middle;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .lang-col {
+            width: 70px;
+            text-align: center;
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 0.7rem;
+        }
+
+        .flag-icon {
+            width: 24px;
+            height: 16px;
+            display: block;
+            margin: 0 auto 2px auto;
+            border-radius: 2px;
+        }
+
+        .word-col {
+            font-size: clamp(1.1rem, 4.5vw, 1.8rem);
+            font-weight: 700;
+            color: var(--text-main);
+            text-transform: lowercase;
+            word-break: break-word;
+            cursor: pointer;
+        }
+        
+        .word-col:active { color: var(--primary); }
+
+        .history-list {
+            display: flex; gap: 5px; justify-content: center; height: 40px; margin-bottom: 15px; width: 100%;
+        }
+
+        .history-item {
+            width: clamp(30px, 9vw, 38px); height: clamp(30px, 9vw, 38px);
+            background: var(--card-bg); border: 2px solid var(--text-dim); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 0.8rem; color: var(--text-dim);
+            transition: all 0.2s ease;
+        }
+
+        .history-item.empty { border: 2px dashed var(--empty-slot); background: transparent; color: transparent; }
+        .history-item:last-child:not(.empty) { border-color: var(--primary); color: var(--primary); transform: scale(1.1); }
+
+        .grid {
+            display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px;
+            background: #334155; padding: 3px; border-radius: 6px; width: 100%; max-width: 600px;
+        }
+
+        .cell {
+            aspect-ratio: 1 / 1; background: var(--card-bg); display: flex;
+            align-items: center; justify-content: center; font-size: clamp(14px, 4vw, 20px); 
+            font-weight: 600; color: var(--text-dim); border-radius: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .cell.called { background-color: var(--called); color: white; cursor: pointer; }
+        .cell.latest { background-color: var(--latest-call); color: white; transform: scale(1.05); z-index: 1; box-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+        .cell.manual { background-color: var(--manual-highlight) !important; color: white; box-shadow: 0 0 10px var(--manual-highlight); }
+
+        .footer-controls { 
+            margin-top: auto; 
+            padding: 20px 0;
+            display: flex;
+            gap: 20px;
+        }
+
+        .control-btn {
+            background: none; color: var(--text-dim); border: 1px solid var(--text-dim);
+            padding: 8px 16px; cursor: pointer; border-radius: 4px; font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ball-counter" id="counter-display">DRAWN: <span>0</span> / REMAINING: <span>90</span></div>
+
+    <button id="main-button" onclick="drawNumber()">GO</button>
+
+    <table class="translation-table">
+        <tr onclick="speakWord('nl')">
+            <td class="lang-col">
+                <svg class="flag-icon" viewBox="0 0 9 6"><rect fill="#21468B" width="9" height="6"/><rect fill="#FFF" width="9" height="4"/><rect fill="#AE1C28" width="9" height="2"/></svg> NL
+            </td>
+            <td class="word-col" id="nl-word"></td>
+        </tr>
+        <tr onclick="speakWord('en')">
+            <td class="lang-col">
+                <svg class="flag-icon" viewBox="0 0 60 30"><rect width="60" height="30" fill="#00247d"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#cf142b" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#cf142b" stroke-width="6"/></svg> EN
+            </td>
+            <td class="word-col" id="en-word"></td>
+        </tr>
+        <tr onclick="speakWord('da')">
+            <td class="lang-col">
+                <svg class="flag-icon" viewBox="0 0 37 28"><rect fill="#C8102E" width="37" height="28"/><path stroke="#FFF" stroke-width="4" d="M0,14 h37 M12,0 v28"/></svg> DA
+            </td>
+            <td class="word-col" id="da-word"></td>
+        </tr>
+    </table>
+
+    <div class="history-list" id="history"></div>
+    <div id="bingo-grid" class="grid"></div>
+
+    <div class="footer-controls">
+        <button class="control-btn" id="fullscreen-btn" onclick="toggleFullscreen()">Fullscreen</button>
+        <button class="control-btn" onclick="resetGame()">Reset Board</button>
+    </div>
+
+    <script>
+        const words = {
+            nl: { lang: 'nl-NL', u: ['', 'één', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven', 'acht', 'negen'], t: ['tien', 'elf', 'twaalf', 'dertien', 'veertien', 'vijftien', 'zestien', 'zeventien', 'achttien', 'negentien'], d: ['', '', 'twintig', 'dertig', 'veertig', 'vijftig', 'zestig', 'zeventig', 'tachtig', 'negentig'] },
+            en: { lang: 'en-GB', u: ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'], t: ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'], d: ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'] },
+            da: { lang: 'da-DK', u: ['', 'en', 'to', 'tre', 'fire', 'fem', 'seks', 'syv', 'otte', 'ni'], t: ['ti', 'elleve', 'tolv', 'tretten', 'fjorten', 'femten', 'seksten', 'sytten', 'atten', 'nitten'], d: ['', '', 'tyve', 'tredive', 'fyrre', 'halvtreds', 'tres', 'halvfjerds', 'firs', 'halvfems'] }
+        };
+
+        let available = [], history = [], called = [];
+        const STORAGE_KEY = 'bingo';
+        const HISTORY_LIMIT = 8;
+        let voices = [];
+
+        function getWord(n, l) {
+            const d = words[l];
+            if (n < 10) return d.u[n];
+            if (n < 20) return d.t[n-10];
+            const u = n % 10, t = Math.floor(n / 10);
+            if (l === 'nl') return u === 0 ? d.d[t] : d.u[u] + '-en-' + d.d[t];
+            if (l === 'da') return u === 0 ? d.d[t] : d.u[u] + '-og-' + d.d[t];
+            return u === 0 ? d.d[t] : d.d[t] + '-' + d.u[u];
+        }
+
+        function loadVoices() { voices = window.speechSynthesis.getVoices(); }
+        if (speechSynthesis.onvoiceschanged !== undefined) { speechSynthesis.onvoiceschanged = loadVoices; }
+
+        function speakWord(langKey) {
+            const text = document.getElementById(`${langKey}-word`).innerText;
+            if (!text || !window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            const targetLang = words[langKey].lang;
+            const voice = voices.find(v => v.lang === targetLang && v.name.includes('Google')) || voices.find(v => v.lang.startsWith(targetLang.split('-')[0]));
+            if (voice) utterance.voice = voice;
+            utterance.lang = targetLang;
+            utterance.rate = 0.85;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function updateUI(num) {
+            document.getElementById('main-button').innerText = num || "GO";
+            document.getElementById('nl-word').innerText = num ? getWord(num, 'nl') : "";
+            document.getElementById('en-word').innerText = num ? getWord(num, 'en') : "";
+            document.getElementById('da-word').innerText = num ? getWord(num, 'da') : "";
+            document.getElementById('counter-display').innerHTML = `DRAWN: <span>${called.length}</span> / REMAINING: <span>${available.length}</span>`;
+            document.querySelectorAll('.cell').forEach(c => c.classList.remove('latest'));
+            if (num) {
+                const latestCell = document.getElementById(`cell-${num}`);
+                if (latestCell) latestCell.classList.add('latest');
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ available, history, called }));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const data = JSON.parse(saved);
+                available = data.available; history = data.history; called = data.called;
+                updateUI(history[history.length - 1]); updateHistoryUI(); renderGrid();
+                return true;
+            }
+            return false;
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('bingo-grid'); grid.innerHTML = '';
+            for (let i = 1; i <= 90; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell' + (called.includes(i) ? ' called' : '');
+                if (history.length > 0 && i === history[history.length - 1]) cell.classList.add('latest');
+                cell.innerText = i; cell.id = `cell-${i}`;
+                cell.onclick = () => { if (called.includes(i)) cell.classList.toggle('manual'); };
+                grid.appendChild(cell);
+            }
+        }
+
+        function drawNumber() {
+            if (available.length === 0) return;
+            document.querySelectorAll('.cell.manual').forEach(el => el.classList.remove('manual'));
+            const idx = Math.floor(Math.random() * available.length);
+            const drawn = available.splice(idx, 1)[0];
+            called.push(drawn); history.push(drawn);
+            if (history.length > HISTORY_LIMIT) history.shift();
+            updateUI(drawn); document.getElementById(`cell-${drawn}`).classList.add('called');
+            updateHistoryUI(); saveState();
+        }
+
+        function updateHistoryUI() {
+            const container = document.getElementById('history'); container.innerHTML = '';
+            for (let i = 0; i < HISTORY_LIMIT; i++) {
+                const slot = document.createElement('div');
+                const hIdx = i - (HISTORY_LIMIT - history.length);
+                if (hIdx >= 0) { slot.className = 'history-item'; slot.innerText = history[hIdx]; }
+                else { slot.className = 'history-item empty'; }
+                container.appendChild(slot);
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => alert(err.message));
+                document.getElementById('fullscreen-btn').innerText = "Exit Fullscreen";
+            } else {
+                document.exitFullscreen();
+                document.getElementById('fullscreen-btn').innerText = "Fullscreen";
+            }
+        }
+
+        function resetGame() {
+            if (confirm("Reset Board?")) {
+                localStorage.removeItem(STORAGE_KEY);
+                available = Array.from({length: 90}, (_, i) => i + 1);
+                history = []; called = [];
+                updateUI(null); updateHistoryUI(); renderGrid();
+            }
+        }
+
+        function init() { if (!loadState()) { available = Array.from({length: 90}, (_, i) => i + 1); renderGrid(); updateUI(null); } loadVoices(); }
+        init();
+    </script>
+</body>
+</html>
