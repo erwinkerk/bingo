@@ -113,10 +113,17 @@
         .cell.called { background-color: var(--called); color: white; cursor: pointer; }
         .cell.called.manual { background-color: var(--manual-highlight); }
 
-        .controls { margin-top: auto; padding: 15px 0; }
-        .reset-btn {
+        .footer-controls { 
+            margin-top: auto; 
+            padding: 20px 0;
+            display: flex;
+            gap: 20px;
+        }
+
+        .control-btn {
             background: none; color: var(--text-dim); border: 1px solid var(--text-dim);
             padding: 8px 16px; cursor: pointer; border-radius: 4px; font-size: 0.7rem;
+            text-transform: uppercase;
         }
     </style>
 </head>
@@ -148,8 +155,9 @@
     <div class="history-list" id="history"></div>
     <div id="bingo-grid" class="grid"></div>
 
-    <div class="controls">
-        <button class="reset-btn" onclick="resetGame()">Reset Board</button>
+    <div class="footer-controls">
+        <button class="control-btn" id="fullscreen-btn" onclick="toggleFullscreen()">Fullscreen</button>
+        <button class="control-btn" onclick="resetGame()">Reset Board</button>
     </div>
 
     <script>
@@ -164,14 +172,8 @@
             if (n < 10) return d.u[n];
             if (n < 20) return d.t[n-10];
             const u = n % 10, t = Math.floor(n / 10);
-            
-            if (l === 'nl') {
-                return u === 0 ? d.d[t] : d.u[u] + '-en-' + d.d[t];
-            }
-            if (l === 'da') {
-                return u === 0 ? d.d[t] : d.u[u] + '-og-' + d.d[t];
-            }
-            // English
+            if (l === 'nl') return u === 0 ? d.d[t] : d.u[u] + '-en-' + d.d[t];
+            if (l === 'da') return u === 0 ? d.d[t] : d.u[u] + '-og-' + d.d[t];
             return u === 0 ? d.d[t] : d.d[t] + '-' + d.u[u];
         }
 
@@ -230,6 +232,25 @@
                 container.appendChild(slot);
             }
         }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    alert(`Error attempting to enable full-screen mode: ${err.message}`);
+                });
+                document.getElementById('fullscreen-btn').innerText = "Exit Fullscreen";
+            } else {
+                document.exitFullscreen();
+                document.getElementById('fullscreen-btn').innerText = "Fullscreen";
+            }
+        }
+
+        // Listen for escape key or other exit methods
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                document.getElementById('fullscreen-btn').innerText = "Fullscreen";
+            }
+        });
 
         function resetGame() {
             if (confirm("Reset Board?")) {
